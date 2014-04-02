@@ -1,0 +1,560 @@
+  <!--DOES NOT WORK ON FIREFOX FOR ANDROID AS OF NOW, WILL LOOK INTO IT LATER -->
+  <!DOCTYPLE html>
+  <html>
+  	<head>
+  		<meta name="viewport" content="width=device-width,user-scalable=no,zoom=100%" id="viewport-meta">
+  		<script type="text/javascript">
+			var inputField;
+			var editor;
+			var spellPalette;
+			var prevLen=-1;
+			var lineCount;
+			var currentLine;
+			var currentLineNum;
+			var cursor;
+			var intervalid;
+			var cursorvisible;
+			var fontSize;
+			var lineBreak;
+			var maxdimen;
+			var dimen;
+			var fontWidth;
+			var editorTop;
+			var cursorX,cursorY;
+			var currentCharNum;
+			var numLines;
+			var space;
+			function initialize()
+			{	
+				editor=document.getElementById("editor");
+				spellPalette=document.getElementById("spell_palette");
+				numLines=0;
+				space=0;
+				var temp=document.createElement("span");
+				temp.setAttribute("class","temp");
+				temp.innerHTML="abcdefghijklmnopqrstuvwxyz";
+				editor.appendChild(temp);
+				fontWidth=temp.offsetWidth/26;
+				editor.removeChild(temp);
+				//document.getElementById("test").innerHTML=fontWidth;
+				
+				var style=window.getComputedStyle(editor, null).getPropertyValue('font-size');
+      			fontSize=parseFloat(style); 
+				inputField=document.createElement("input");
+				inputField.setAttribute("type","textarea");
+				//inputField.setAttribute("class","input");
+				inputField.setAttribute("id","inputField");
+				inputField.setAttribute("autocapitalize","false");
+				inputField.setAttribute("spellcheck","false");
+				inputField.setAttribute("wrap","off");
+				//inputField.style.visibility="visible";
+				inputField.style.width=fontWidth;
+				
+				inputField.style.height=fontSize;
+				inputField.onkeydown=function(evt)
+				{
+					evt=evt||window.event;
+					//document.getElementById("test").value="changed";
+					switch(evt.which)
+					{
+					case 8:
+						//document.getElementById("test").innerHTML="BACKSPACE";
+						inputField.value="";
+						deleteText();
+						break;	
+					case 13:
+						//document.getElementById("test").innerHTML="ENTER";
+						inputField.value="";
+						var line=createLine("");
+						enterLine(line);
+						line.click();
+						break;	
+					}
+				}
+				inputField.style.opacity=1;
+				cursorvisible=1;
+				intervalid=window.setInterval(cursor_display,500);
+				
+				inputField.oninput=function()
+				{
+					var str=inputField.value;
+					var strLen=str.length;
+					if(str.charAt(strLen-1)!='\n')
+					{
+						enterText(str.charAt(strLen-1));
+						//document.getElementById("test").innerHTML=str.charAt(strLen-1);
+					}
+					inputField.value="";
+				}
+				/*inputField.onfocus=function()
+				{
+					inputField.style.opacity=1;
+					cursorvisible=1;
+					intervalid=window.setInterval(cursor_display,500);	
+				}*/
+				/*inputField.onblur=function()
+				{
+					window.clearInterval(intervalid);
+					inputField.style.opacity=0;
+				}*/
+				editor.appendChild(inputField);
+				cursorvisible=0;
+				//inputField.focus();
+				lineBreak=document.createElement("br");
+				currentLine=createLine("");
+				currentLine.setAttribute("linenum",0);
+				editor.appendChild(currentLine);
+				currentLine.click();
+				
+				resize();
+			}
+		
+			function cursor_display()
+			{
+				if(cursorvisible==0)
+				{
+					cursorvisible=1;
+					inputField.style.opacity=1;
+				}
+				else
+				{
+					cursorvisible=0;
+					inputField.style.opacity=0;
+				}
+			}
+  			function resize()
+  			{
+      			var winW=window.innerWidth;
+				var winH=window.innerHeight;
+				dimen=winW;
+				
+				if(winH<winW)
+					maxdimen=winW;
+				else
+					maxdimen=winH;
+				/*document.getElementById("image").style.width=window.innerWidth;
+      			document.getElementById("editor").style.width=window.innerWidth;
+      			document.getElementById("editor").style.height=window.innerWidth*0.57;
+      			document.getElementById("editor").style.top=window.innerWidth*0.1;*/
+				
+				document.getElementById("image").style.width=dimen;
+      			document.getElementById("editor").style.width=dimen;
+      			document.getElementById("editor").style.height=dimen*0.559;
+				editorTop=dimen*0.1;
+      			document.getElementById("editor").style.top=editorTop;
+				spellPalette.style.width=dimen;
+				//spellPalette.style.height=dimen*0.5;
+				spellPalette.style.top=dimen*0.859;
+				currentline.style.width=dimen;
+  			}
+			
+			function enterLine(l)
+			{
+				var sibling;
+				var tempLineNum;
+				//tempLineNum=currentLine.getAttribute("linenum");
+				//tempLineNum=parseInt(tempLineNum+1);
+				//l.setAttribute("linenum",tempLineNum);
+				sibling=currentLine.nextSibling;	
+				if(sibling==null)
+					editor.appendChild(l);
+				else
+				{
+					editor.insertBefore(l,sibling);
+					while(sibling!=null)
+					{
+							tempLineNum=sibling.getAttribute("linenum");
+							tempLineNum++;
+							sibling.setAttribute("linenum",tempLineNum);
+							sibling=sibling.nextSibling;
+					}
+					
+				}
+				//currentLine=l;
+				l.click();
+			}
+			
+			function createLine(str)
+			{
+				var line=document.createElement("div");
+				line.setAttribute("class","line");
+				var tempLineNum;
+				tempLineNum=currentLineNum;
+				tempLineNum++;
+				line.setAttribute("linenum",tempLineNum);
+				numLines++;
+				line.style.width=dimen;
+				line.style.height=fontSize;
+				line.innerText=str;
+				line.onclick=function(e)
+				{
+					if(currentLine!=null)
+						currentLine.style.backgroundColor="rgba(0,204,255,0)";
+					e = e || window.event;
+    				var targ = e.target || e.srcElement;
+    				if (targ.nodeType == 3) targ = targ.parentNode; // defeat Safari bug
+					targ.style.backgroundColor="rgba(0,204,2550,0.3)";
+					currentLine=targ;
+					//currentLineNum=parseInt(parseInt(e.clientY-editorTop-5)/fontSize);
+					currentLineNum=currentLine.getAttribute("linenum");
+					//cursorY=(currentLineNum*fontSize)+5;
+					cursorY=(currentLineNum*fontSize);
+					
+					//currentCharNum=parseInt((e.offsetX+5)/fontWidth);
+					currentCharNum=parseInt((e.offsetX)/fontWidth);
+					if(currentCharNum>targ.innerText.length)
+						currentCharNum=targ.innerText.length;
+					//cursorX=(currentCharNum*fontWidth)+5;
+					cursorX=(currentCharNum*fontWidth);
+					inputField.style.top=cursorY;
+					inputField.style.left=cursorX;
+					inputField.focus();
+					//document.getElementById("test").innerHTML=currentLineNum;
+				}
+				return line;
+				
+			}
+				
+			function lineSelected(e) {
+
+    			e = e || window.event;
+    			var targ = e.target || e.srcElement;
+    			if (targ.nodeType == 3) targ = targ.parentNode; // defeat Safari bug
+				targ.style.backgroundColor="rgba(0,204,255,0.3)";
+			}	
+			
+			function enterText(s)
+			{
+				if(s==" ")
+				{
+					if(space==1 || space==2)
+					{
+						return;	
+					}
+					else
+					{
+						var lineStr=currentLine.innerText;
+						if(currentCharNum==lineStr.length)
+						{
+							space=2;
+						}
+						else
+						{
+							currentLine.innerText=lineStr.substring(0,currentCharNum)+s+lineStr.substring(currentCharNum,lineStr.length);
+							
+							space=1;
+						}
+						cursorX=cursorX+fontWidth;
+						inputField.style.left=cursorX;
+						currentCharNum=currentCharNum+1;
+					}
+					
+				}
+				else
+				{
+					var lineStr=currentLine.innerText;
+					if(space==2)
+					{
+						currentLine.innerText=lineStr.substring(0,currentCharNum)+" "+s+lineStr.substring(currentCharNum,lineStr.length);
+						cursorX=cursorX+(fontWidth*s.length);
+						inputField.style.left=cursorX;
+						currentCharNum=currentCharNum+s.length;
+					}
+					else
+					{
+						currentLine.innerText=lineStr.substring(0,currentCharNum)+s+lineStr.substring(currentCharNum,lineStr.length);
+						cursorX=cursorX+(fontWidth*s.length);
+						inputField.style.left=cursorX;
+						currentCharNum=currentCharNum+s.length;
+					}
+					space=0;
+				}
+			}
+			
+			function deleteText()
+			{
+				var lineStr=currentLine.innerText;
+				currentLine.innerText=lineStr.substring(0,currentCharNum-1)+lineStr.substring(currentCharNum,lineStr.length);
+				cursorX=cursorX-fontWidth;
+				if(cursorX<0)
+					cursorX=0;
+				inputField.style.left=cursorX;
+				currentCharNum--;
+				if(currentCharNum<0)
+					currentCharNum=0;	
+			}
+			
+			function new_spell(spell)
+			{
+				var spellStr;
+				switch(spell)
+				{
+				case "moveLeft":
+					spellStr="this.moveLeft();";
+					break;
+				case "getEnemies":
+					spellStr="this.getEnemies();";
+					break;
+				case "if":
+					enterText("if()");
+					var l=currentLine;
+					inputField.focus();
+					var line=createLine("{");
+					enterLine(line);
+					var line=createLine("");
+					enterLine(line);
+					var line=createLine("}");
+					enterLine(line);
+					var line=createLine("");
+					enterLine(line);
+					l.click();
+					cursorX=cursorX+fontWidth*3;
+					currentCharNum=currentCharNum+3;
+					inputField.style.left=cursorX;
+					inputField.blur();
+					return;
+				case "eq":
+					enterText("(op1 == op2)");
+					return;
+				case "ne":
+					enterText("(op1 != op2)");
+					return;
+				case "lt":
+					enterText("(op1 < op2)");
+					return;
+				case "le":
+					enterText("(op1 <= op2)");
+					return;
+				case "gt":
+					enterText("(op1 > op2)");
+					return;
+				case "ge":
+					enterText("(op1 >= op2)");
+					return;
+				case "and":
+					enterText("&&");
+					return;
+				case "or":
+					enterText("||");
+					return;
+				case "not":
+					enterText("!");
+					return;
+				case "say":
+					enterText("this.say('');");
+					var l=currentLine;
+					var line=createLine("");
+					enterLine(line);
+					l.click();
+					cursorX=cursorX+fontWidth*10;
+					currentCharNum=currentCharNum+10;
+					inputField.style.left=cursorX;
+					inputField.focus();
+					return;
+				default:
+					return;
+				}
+				enterText(spellStr);
+				var line=createLine("");
+				enterLine(line);
+				line.click();
+				inputField.blur();
+			}
+			
+  			window.onresize = function() { 
+      			resize(); 
+  			}
+  
+  		</script>
+  		<title>Mobile Interface Mockup</title>
+  		<style type="text/css">
+			#inputField{
+				border-left-color:#00F;
+				border-left-width:medium;
+				resize:none;
+				position: absolute;
+				z-index: 0;
+				width: 0.5em;
+				height: 1em;
+				/*opacity: 0;*/
+				background: transparent;
+				-moz-appearance: none;
+				appearance: none;
+				border-top: none;
+				border-bottom:none;
+				border-right:none;
+				resize: none;
+				outline: none;
+				overflow: hidden;
+				font: inherit;
+				padding: 0 1px;
+				margin: 0 -1px;
+				text-indent: -1em;
+				-ms-user-select: text;
+				-moz-user-select: text;
+				-webkit-user-select: text;
+				user-select: text;
+			}
+			#temp{
+				position:absolute;
+				opacity:0;
+				/*font:inherit;*/
+				font-family:monospace,monospace;		
+			}
+  			#editor{
+  				position: absolute;
+				font-weight:normal;
+      			/*font-family:"Courier New",courier,monospace;*/
+				/*font-family:Consolas,Monaco,"Lucida Console","Liberation Mono","DejaVu Sans Mono","Bitstream Vera Sans Mono","Courier New", monospace;*/	
+				font-family: 'Monaco', 'Menlo', 'Ubuntu Mono', 'Consolas', 'source-code-pro', monospace;
+				font-size:1em;
+				color:#FFFFFF;
+  				left:0px;
+      			background-color:rgba(0,0,0,0.7);
+				overflow-y:scroll;
+				overflow-x:none;
+				word-wrap:break-word;
+      			/*padding:5px;*/
+  			}
+  			#image{
+  				position: absolute;
+  				top: 0px;
+    			left: 0px;
+  			}
+  			@viewport{
+  				width:device-width;
+      			user-scalable:no;
+  			}
+			#test{
+				background-color:#F00;
+				color:#FFF;	
+				position:absolute;
+			}
+			.line{
+				/*background-color:rgba(0,204,2550,0.3);*/
+			}
+			#spell_palette{
+				position:absolute;
+				background-color:#FF9;
+				left:0px;	
+			}
+			.palette_table{
+				width:100%;				
+			}
+			.condition{
+					
+				
+			}
+  		</style>
+  	</head>
+  	<body onLoad="initialize()">
+  		<img src="level_window.png" id="image"/>
+  		<div id="editor">
+        </div>
+        <!--<div id="test">Test</div>-->
+        <div id="spell_palette">
+        	<h3>Spell Palette</h3>
+            <table class="palette_table">
+            <tr>
+            	<td><b>this</b></td>
+            </tr>
+            </table>
+            <table class="palette_table">
+            <tr>
+            	<td>
+            		<span class="spell_palette_entry" onClick="new_spell('moveLeft')">
+            			moveLeft()
+            		</span>	
+            	</td>
+                <td>	
+            		<span class="spell_palette_entry" onClick="new_spell('getEnemies')">
+            			getEnemies()
+            		</span>
+                </td>
+                <td>
+                	<span class="spell_palette_entry" onClick="new_spell('say')">
+            			say()
+            		</span>
+                </td>
+            </tr>
+            </table>
+            <table class="palette_table">
+            <tr>
+            	<td><b>Snippet</b></td>
+            </tr>
+            </table>
+            <table class="palette_table">
+            <tr>
+            	<td>
+                	<span class="spell_palette_entry" onClick="new_spell('if')">
+            			if
+            		</span>
+                </td>
+            </tr>
+            </table>
+            <table class="palette_table">
+            <tr>
+            	<td><b>Relational Operators</b></td>
+            </tr>
+            </table>
+            <table class="palette_table">
+            <tr>
+            	<td>
+                	<span class="spell_palette_entry" onClick="new_spell('eq')">
+            			==
+            		</span>
+                </td>
+                <td>
+                    <span class="spell_palette_entry" onClick="new_spell('ne')">
+            			!=
+            		</span>
+                </td>
+                <td>
+                    <span class="spell_palette_entry" onClick="new_spell('lt')">
+            			<
+            		</span>
+                </td>
+                <td>
+                    <span class="spell_palette_entry" onClick="new_spell('le')">
+            			<=
+            		</span>
+                </td>
+                <td>
+                    <span class="spell_palette_entry" onClick="new_spell('gt')">
+            			>
+            		</span>
+                </td>
+                <td>
+                    <span class="spell_palette_entry" onClick="new_spell('ge')">
+            			>=
+            		</span>
+                </td>
+            </tr>
+            </table>
+            <table class="palette_table">
+            <tr>
+            	<td><b>Logical Operators</b></td>
+            </tr>
+            </table>
+            <table class="palette_table">
+            <tr>
+            	<td>
+                	<span class="spell_palette_entry" onClick="new_spell('and')">
+            			&&
+            		</span>
+                </td>
+                <td>
+                	<span class="spell_palette_entry" onClick="new_spell('or')">
+            			||
+            		</span>
+                </td>
+                <td>
+                	<span class="spell_palette_entry" onClick="new_spell('not')">
+            			!
+            		</span>
+                </td>
+            </tr>
+            </table>
+        </div> 
+  	</body>
+  </html>
